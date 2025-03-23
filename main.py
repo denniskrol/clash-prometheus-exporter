@@ -39,10 +39,16 @@ def get_proxies():
 
 
 def get_proxies_status(proxies):
-    excluded_keys = ['Auto', 'DIRECT', 'FINAL', 'GLOBAL', 'Hijacking', 'PROXY', 'REJECT']
+    excluded_keys = ['Auto', 'DIRECT', 'FINAL', 'GLOBAL', 'Hijacking', 'PROXY', 'REJECT', '剩余流量', '套餐到期', '当前网址', '流量重置']
     proxy_statusus = []
     for key in proxies['proxies']:
+        add_proxy = False
         if key not in excluded_keys:
+            add_proxy = True
+            for excluded_key in excluded_keys:
+                if key.startswith(excluded_key):
+                    add_proxy = False
+        if add_proxy:
             proxy_statusus.append([key, int(proxies['proxies'][key]['alive'])])
 
     return proxy_statusus
