@@ -13,6 +13,8 @@ cp .env.example .env
 Edit `.env` file and set the `CLASH_HOST`, `CLASH_PORT`, and `CLASH_API_KEY` to your Clash config.
 You can get `CLASH_API_KEY` from `%userprofile%\.config\clash\config.yaml` file.
 
+If you set `SUBSCRIPTION_URL` to the URL of your Clash subscription, the exporter will also get your data usage and your expiration date. Those update once an hour to not hammer your subscription provider.
+
 
 ### Run
 ```bash

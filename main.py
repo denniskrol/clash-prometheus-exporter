@@ -3,9 +3,13 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 import os
 import requests
+import time
 import uvicorn
 
 load_dotenv()
+
+subscription_info_updated_at = None
+subscription_info = None
 
 app = FastAPI()
 @app.get('/metrics', response_class=PlainTextResponse)
@@ -27,6 +31,22 @@ def index():
     result = result + '# TYPE proxy_latency gauge\n'
     for proxy in proxy_latencies:
         result = result + 'proxy_latency{proxy=\"' + proxy[0] + '\"} ' + str(proxy[1]) + '\n'
+    result = result + '\n'
+
+    get_subscription_info()
+    global subscription_info
+    if isinstance(subscription_info, list):
+        result = result + '# HELP data Data in bytes\n'
+        result = result + '# TYPE data gauge\n'
+        result = result + 'data{type=\"upload\"} ' + str(subscription_info[0][1]) + '\n'
+        result = result + 'data{type=\"download\"} ' + str(subscription_info[1][1]) + '\n'
+        result = result + 'data{type=\"total\"} ' + str(subscription_info[2][1]) + '\n'
+        result = result + 'data{type=\"available\"} ' + str((int(subscription_info[2][1]) - int(subscription_info[1][1]) - int(subscription_info[0][1]))) + '\n'
+        result = result + '\n'
+
+        result = result + '# HELP expires_at Expiry date in unixtime\n'
+        result = result + '# TYPE expires_at gauge\n'
+        result = result + 'expires_at ' + str(subscription_info[3][1]) + '\n'
 
     return result
 
@@ -61,6 +81,33 @@ def get_proxy_latencies(proxies, proxy_statusus):
             proxy_latencies.append([proxy[0], proxies['proxies'][proxy[0]]['history'][-1]['delay']])
 
     return proxy_latencies
+
+
+def get_subscription_info():
+    if os.getenv('SUBSCRIPTION_URL') is None:
+        return None
+
+    global subscription_info_updated_at
+    global subscription_info
+
+    if subscription_info_updated_at is not None and (time.time() - subscription_info_updated_at) < 3600:
+        return subscription_info
+
+    subscription_info_updated_at = int(time.time())
+
+    response = requests.get(os.getenv('SUBSCRIPTION_URL'))
+    if response.status_code != 200:
+        return None
+
+    subscription_info_header = response.headers.get('subscription-userinfo')
+    subscription_info_items = [item.strip() for item in subscription_info_header.split(";")]
+
+    subscription_info = []
+    for info in subscription_info_items:
+        key, value = info.split("=")
+        subscription_info.append((key, value))
+
+    return subscription_info
 
 
 if __name__ == '__main__':
